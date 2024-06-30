@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -19,6 +17,8 @@ class _AddMusicState extends State<AddMusic> {
   File? _coverImageFile;
   final storageRef = FirebaseStorage.instance.ref();
   var db = FirebaseFirestore.instance;
+  double _musicProgress = 0;
+  double _imageprogress = 0;
   bool isLoading = false;
 
   void _pickMusicFile() async {
@@ -65,10 +65,24 @@ class _AddMusicState extends State<AddMusic> {
     });
     id += 1;
     final musicRef = storageRef.child(_musicFile!.path.split('/').last);
-    await musicRef.putFile(_musicFile!);
+    final _musicuploadTask = musicRef.putFile(_musicFile!);
+    _musicuploadTask.snapshotEvents.listen((event) {
+      setState(() {
+        _musicProgress = (event.bytesTransferred.toDouble() * 100) /
+            event.totalBytes.toDouble();
+      });
+    });
+    await _musicuploadTask;
     final String musicurl = await musicRef.getDownloadURL();
     final ImageRef = storageRef.child(_coverImageFile!.path.split('/').last);
-    await ImageRef.putFile(_coverImageFile!);
+    final _imageuploadTask = ImageRef.putFile(_coverImageFile!);
+    _imageuploadTask.snapshotEvents.listen((event) {
+      setState(() {
+        _imageprogress = (event.bytesTransferred.toDouble() * 100) /
+            event.totalBytes.toDouble();
+      });
+    });
+    await _imageuploadTask;
     final imageurl = await ImageRef.getDownloadURL();
     // Prepare data object
     Map<String, dynamic> data = {
@@ -78,10 +92,6 @@ class _AddMusicState extends State<AddMusic> {
       'url': musicurl,
       'artwork': imageurl,
     };
-
-    // Convert data to JSON
-
-    // Print JSON data
     print(data);
     await db.collection('Music').doc().set(data);
     setState(() {
@@ -105,7 +115,17 @@ class _AddMusicState extends State<AddMusic> {
                   children: [
                     LoadingAnimationWidget.threeArchedCircle(
                         color: Colors.black, size: 120),
-                    Text("Uploading....")
+                    Text("Uploading...."),
+                    SizedBox(
+                      height: 15,
+                    ),
+                    Text(
+                        "Music Upload Progress: ${_musicProgress.toStringAsFixed(2)}"),
+                    SizedBox(
+                      height: 15,
+                    ),
+                    Text(
+                        "Image Upload Progress: ${_imageprogress.toStringAsFixed(2)}")
                   ],
                 ),
               )

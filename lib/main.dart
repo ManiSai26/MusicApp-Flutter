@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -46,10 +44,18 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   var list = [];
+  var displaylist = [];
   int current = -1;
   bool currentReloading = false;
   bool isLoading = false;
   var db = FirebaseFirestore.instance;
+  void nextSong() {
+    setState(() {
+      current = (current + 1) % list.length;
+      print(current);
+    });
+  }
+
   Future<void> _refresh() async {
     setState(() {
       currentReloading = true;
@@ -68,6 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
     setState(() {
       list;
+      displaylist = list;
       currentReloading = false;
       isLoading = false;
     });
@@ -83,7 +90,25 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       current = current != cur ? cur : -1;
     });
-    print(current);
+    // print(current);
+  }
+
+  void _filtersearch(String value) {
+    displaylist = list
+        .where((element) =>
+            element['title'].toLowerCase().contains(value.toLowerCase()))
+        .toList();
+    setState(() {
+      // print(displaylist);
+      displaylist;
+    });
+  }
+
+  int _getoriginalValue(int index) {
+    for (int i = 0; i < list.length; i++) {
+      if (list[i]['id'] == displaylist[index]['id']) return i;
+    }
+    return -1;
   }
 
   @override
@@ -120,6 +145,32 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
+                  SizedBox(
+                    height: 10,
+                  ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: Icon(Icons.search),
+                      contentPadding: EdgeInsets.symmetric(
+                          vertical: 10.0, horizontal: 20.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(30.0)),
+                      ),
+                      // enabledBorder: OutlineInputBorder(
+                      //   borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                      //   borderRadius: BorderRadius.all(Radius.circular(30.0)),
+                      // ),
+                      // focusedBorder: OutlineInputBorder(
+                      //   borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                      //   borderRadius: BorderRadius.all(Radius.circular(30.0)),
+                      // ),
+                    ),
+                    onChanged: (value) {
+                      _filtersearch(value);
+                      // print(value);
+                    },
+                  ),
                   Expanded(
                     child: list.isEmpty
                         ? const Center(
@@ -130,10 +181,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           )
                         : ListView.builder(
                             scrollDirection: Axis.vertical,
-                            itemCount: list.length,
+                            itemCount: displaylist.length,
                             itemBuilder: (BuildContext context, int index) {
                               return MusicComponent(
-                                content: list[index],
+                                content: displaylist[index],
+                                index: _getoriginalValue(index),
                                 onClick: setCurrent,
                               );
                             },
@@ -147,8 +199,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                 height: 15,
                               )
                             : MusicPlayerComponent(
-                                url: list[current - 1]['url'],
-                                title: list[current - 1]['title'],
+                                url: list[current]['url'],
+                                title: list[current]['title'],
+                                nextSong: nextSong,
                               ),
                       ),
                     ],

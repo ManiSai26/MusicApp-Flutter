@@ -4,9 +4,13 @@ import 'package:audioplayers/audioplayers.dart';
 class MusicPlayerComponent extends StatefulWidget {
   final String url;
   final String title;
+  final Function nextSong;
 
   const MusicPlayerComponent(
-      {super.key, required this.url, required this.title});
+      {super.key,
+      required this.url,
+      required this.title,
+      required this.nextSong});
 
   @override
   _MusicPlayerComponentState createState() => _MusicPlayerComponentState();
@@ -20,10 +24,33 @@ class _MusicPlayerComponentState extends State<MusicPlayerComponent> {
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
+    _audioPlayer.onPlayerComplete.listen((event) {
+      setState(() {
+        isPlaying = true;
+      });
+      widget.nextSong();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant MusicPlayerComponent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _playNewSong();
+    }
+  }
+
+  void _playNewSong() {
+    _audioPlayer.stop();
+    _audioPlayer.play(UrlSource(widget.url.split('?mp3').first));
+    setState(() {
+      isPlaying = true;
+    });
   }
 
   @override
   void dispose() {
+    _audioPlayer.release();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -65,6 +92,11 @@ class _MusicPlayerComponentState extends State<MusicPlayerComponent> {
                 style: const TextStyle(fontSize: 16.0),
               ),
             ),
+            IconButton(
+                onPressed: () {
+                  widget.nextSong();
+                },
+                icon: Icon(Icons.skip_next_rounded))
           ],
         ),
       ),
